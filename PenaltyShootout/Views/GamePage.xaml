@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:PenaltyShootout.ViewModels"
+             x:Class="PenaltyShootout.Views.GamePage"
+             x:DataType="vm:GameViewModel"
+             Shell.NavBarIsVisible="False"
+             BackgroundColor="Black">
+
+    <Grid>
+        <!-- Game canvas — fills entire screen -->
+        <GraphicsView x:Name="GameCanvas"
+                      InputTransparent="False"
+                      HorizontalOptions="Fill"
+                      VerticalOptions="Fill">
+            <GraphicsView.GestureRecognizers>
+                <PanGestureRecognizer PanUpdated="OnPanUpdated" />
+            </GraphicsView.GestureRecognizers>
+        </GraphicsView>
+
+        <!-- Score overlay — top of screen -->
+        <Grid VerticalOptions="Start"
+              HorizontalOptions="Fill"
+              InputTransparent="True"
+              Padding="16,40,16,12"
+              ColumnDefinitions="*,Auto,*">
+
+            <!-- Player score -->
+            <VerticalStackLayout Grid.Column="0" HorizontalOptions="Center">
+                <Label Text="YOU"
+                       FontSize="12"
+                       FontAttributes="Bold"
+                       TextColor="#AAAAAA"
+                       HorizontalOptions="Center" />
+                <Label Text="{Binding PlayerScore}"
+                       FontSize="42"
+                       FontAttributes="Bold"
+                       TextColor="White"
+                       HorizontalOptions="Center" />
+            </VerticalStackLayout>
+
+            <!-- Round info — center -->
+            <VerticalStackLayout Grid.Column="1" HorizontalOptions="Center">
+                <Label Text="{Binding RoundText}"
+                       FontSize="13"
+                       FontAttributes="Bold"
+                       TextColor="#FFD700"
+                       HorizontalOptions="Center" />
+                <Label Text="–"
+                       FontSize="36"
+                       FontAttributes="Bold"
+                       TextColor="#888888"
+                       HorizontalOptions="Center" />
+            </VerticalStackLayout>
+
+            <!-- Keeper score -->
+            <VerticalStackLayout Grid.Column="2" HorizontalOptions="Center">
+                <Label Text="KEEPER"
+                       FontSize="12"
+                       FontAttributes="Bold"
+                       TextColor="#AAAAAA"
+                       HorizontalOptions="Center" />
+                <Label Text="{Binding KeeperScore}"
+                       FontSize="42"
+                       FontAttributes="Bold"
+                       TextColor="White"
+                       HorizontalOptions="Center" />
+            </VerticalStackLayout>
+        </Grid>
+
+        <!-- Swipe hint — shown only during Aiming phase when difficulty is selected -->
+        <Label Text="Swipe to aim and shoot"
+               FontSize="14"
+               TextColor="#88FFFFFF"
+               HorizontalOptions="Center"
+               VerticalOptions="End"
+               Margin="0,0,0,30"
+               InputTransparent="True">
+            <Label.Triggers>
+                <DataTrigger TargetType="Label"
+                             Binding="{Binding ShowDifficultySelector}"
+                             Value="True">
+                    <Setter Property="IsVisible" Value="False" />
+                </DataTrigger>
+                <DataTrigger TargetType="Label"
+                             Binding="{Binding CurrentPhase}"
+                             Value="Shooting">
+                    <Setter Property="IsVisible" Value="False" />
+                </DataTrigger>
+                <DataTrigger TargetType="Label"
+                             Binding="{Binding CurrentPhase}"
+                             Value="KeeperDive">
+                    <Setter Property="IsVisible" Value="False" />
+                </DataTrigger>
+                <DataTrigger TargetType="Label"
+                             Binding="{Binding CurrentPhase}"
+                             Value="Result">
+                    <Setter Property="IsVisible" Value="False" />
+                </DataTrigger>
+                <DataTrigger TargetType="Label"
+                             Binding="{Binding CurrentPhase}"
+                             Value="GameOver">
+                    <Setter Property="IsVisible" Value="False" />
+                </DataTrigger>
+            </Label.Triggers>
+        </Label>
+
+        <!-- Difficulty selector overlay -->
+        <Grid IsVisible="{Binding ShowDifficultySelector}"
+              BackgroundColor="#CC000000"
+              HorizontalOptions="Fill"
+              VerticalOptions="Fill">
+            <VerticalStackLayout HorizontalOptions="Center"
+                                 VerticalOptions="Center"
+                                 Spacing="20">
+                <Label Text="⚽ PENALTY SHOOTOUT"
+                       FontSize="28"
+                       FontAttributes="Bold"
+                       TextColor="White"
+                       HorizontalOptions="Center" />
+                <Label Text="Choose Difficulty"
+                       FontSize="16"
+                       TextColor="#AAAAAA"
+                       HorizontalOptions="Center" />
+
+                <Button Text="EASY"
+                        Command="{Binding SetDifficultyCommand}"
+                        CommandParameter="Easy"
+                        BackgroundColor="#2E7D32"
+                        TextColor="White"
+                        FontSize="18"
+                        FontAttributes="Bold"
+                        WidthRequest="220"
+                        HeightRequest="55"
+                        CornerRadius="28" />
+
+                <Button Text="MEDIUM"
+                        Command="{Binding SetDifficultyCommand}"
+                        CommandParameter="Medium"
+                        BackgroundColor="#F57F17"
+                        TextColor="White"
+                        FontSize="18"
+                        FontAttributes="Bold"
+                        WidthRequest="220"
+                        HeightRequest="55"
+                        CornerRadius="28" />
+
+                <Button Text="HARD"
+                        Command="{Binding SetDifficultyCommand}"
+                        CommandParameter="Hard"
+                        BackgroundColor="#C62828"
+                        TextColor="White"
+                        FontSize="18"
+                        FontAttributes="Bold"
+                        WidthRequest="220"
+                        HeightRequest="55"
+                        CornerRadius="28" />
+            </VerticalStackLayout>
+        </Grid>
+
+        <!-- Play Again button — shown only on GameOver -->
+        <Button Text="PLAY AGAIN"
+                Command="{Binding PlayAgainCommand}"
+                IsVisible="{Binding ShowPlayAgain}"
+                BackgroundColor="#FFD700"
+                TextColor="#333333"
+                FontSize="20"
+                FontAttributes="Bold"
+                WidthRequest="240"
+                HeightRequest="60"
+                CornerRadius="30"
+                HorizontalOptions="Center"
+                VerticalOptions="End"
+                Margin="0,0,0,80" />
+    </Grid>
+</ContentPage>
