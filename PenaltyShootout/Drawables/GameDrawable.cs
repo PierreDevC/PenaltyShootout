@@ -1,6 +1,5 @@
 using PenaltyShootout.Enums;
 using PenaltyShootout.Models;
-using PenaltyShootout.Services;
 
 namespace PenaltyShootout.Drawables;
 
@@ -15,6 +14,11 @@ public class GameDrawable : IDrawable
     public Goalkeeper? Goalkeeper { get; set; }
     public GoalPost? GoalPost { get; set; }
     public GameState? GameState { get; set; }
+
+    // Sprites — loaded async by GamePage; each falls back to programmatic drawing if null
+    public Microsoft.Maui.Graphics.IImage? BallImage { get; set; }
+    public Microsoft.Maui.Graphics.IImage? GoalkeeperIdleImage { get; set; }
+    public Microsoft.Maui.Graphics.IImage? GoalkeeperCrouchImage { get; set; }
 
     // Aim indicator state — set by GameViewModel during Aiming phase
     public float AimX { get; set; } = 0.5f;
@@ -58,17 +62,18 @@ public class GameDrawable : IDrawable
         canvas.SetFillPaint(paint, r);
         canvas.FillRectangle(r);
 
-        // Penalty arc — white arc at bottom-center
+        // Penalty arc — anchored from the bottom so it stays visible on tall screens
         canvas.StrokeColor = Colors.White;
         canvas.StrokeSize = 2f;
         canvas.Alpha = 0.4f;
         float cx = r.Width * 0.5f;
-        float arcRadius = r.Width * 0.22f;
-        canvas.DrawArc(cx - arcRadius, r.Height * 0.72f, arcRadius * 2, arcRadius * 2, 0, 180, false, false);
+        float arcRadius = r.Width * 0.28f;
+        float spotY = r.Height - r.Width * 0.20f;  // fixed distance from bottom, scales with width not height
+        canvas.DrawArc(cx - arcRadius, spotY - arcRadius, arcRadius * 2, arcRadius * 2, 0, 180, false, false);
 
         // Penalty spot
         canvas.FillColor = Colors.White;
-        canvas.FillCircle(cx, r.Height * 0.82f, 4f);
+        canvas.FillCircle(cx, spotY, 4f);
 
         // Penalty box lines
         float boxLeft  = r.Width * 0.18f;
@@ -96,37 +101,89 @@ public class GameDrawable : IDrawable
         float width  = GoalPost.Width  * r.Width;
         float height = GoalPost.Height * r.Height;
 
-        // Net background (light gray with transparency)
-        canvas.FillColor = Color.FromArgb("#40ffffff");
+#if ANDROID || IOS
+        // Scale the goal up on mobile — expand symmetrically from centre
+        const float goalMobileScale = 1.35f;
+        float extraW = width  * (goalMobileScale - 1f) / 2f;
+        float extraH = height * (goalMobileScale - 1f) / 2f;
+        left   -= extraW;
+        top    -= extraH;
+        width  *= goalMobileScale;
+        height *= goalMobileScale;
+#endif
+
+        float right  = left + width;
+        float bottom = top + height;
+
+        // ── Depth shadow — gives the goal a recessed, 3D look ──
+        canvas.FillColor = Color.FromArgb("#50000000");
+        canvas.FillRectangle(left + 5, top + 4, width, height);
+
+        // ── Net background — gradient from dark (back) to lighter (front) ──
+        var netPaint = new LinearGradientPaint
+        {
+            StartColor = Color.FromArgb("#28ffffff"),
+            EndColor   = Color.FromArgb("#55ffffff"),
+            StartPoint = new Point(0, 0),
+            EndPoint   = new Point(0, 1)
+        };
+        canvas.SetFillPaint(netPaint, new RectF(left, top, width, height));
         canvas.FillRectangle(left, top, width, height);
 
-        // Net grid pattern
-        canvas.StrokeColor = Color.FromArgb("#60ffffff");
-        canvas.StrokeSize = 1f;
-        int cols = 12;
-        int rows = 4;
-        for (int i = 0; i <= cols; i++)
+        // ── Net mesh — clipped to goal frame ──
+        canvas.SaveState();
+        canvas.ClipRectangle(left, top, width, height);
+
+        // Vertical strings
+        canvas.StrokeColor = Color.FromArgb("#75ffffff");
+        canvas.StrokeSize = 0.8f;
+        float colSpacing = width / 16f;
+        for (float x = left; x <= right + 0.5f; x += colSpacing)
+            canvas.DrawLine(x, top, x, bottom);
+
+        // Horizontal strings with subtle perspective convergence toward the top
+        const int rowCount = 6;
+        for (int row = 0; row <= rowCount; row++)
         {
-            float x = left + (width / cols) * i;
-            canvas.DrawLine(x, top, x, top + height);
-        }
-        for (int i = 0; i <= rows; i++)
-        {
-            float y = top + (height / rows) * i;
-            canvas.DrawLine(left, y, left + width, y);
+            float t = (float)row / rowCount;
+            float y = top + t * height;
+            float inset = (1f - t) * width * 0.03f; // lines converge slightly at top
+            canvas.DrawLine(left + inset, y, right - inset, y);
         }
 
-        // Goal frame posts and crossbar
+        // Diagonal strings — cross both ways to create a diamond mesh
+        canvas.StrokeColor = Color.FromArgb("#40ffffff");
+        canvas.StrokeSize = 0.6f;
+        float diagStep = colSpacing * 1.6f;
+        for (float d = -height * 2f; d <= width + height; d += diagStep)
+        {
+            canvas.DrawLine(left + d, bottom, left + d + height, top);
+            canvas.DrawLine(left + d, top,    left + d + height, bottom);
+        }
+
+        canvas.RestoreState();
+
+        // ── Post shadows ──
+        canvas.StrokeColor = Color.FromArgb("#55000000");
+        canvas.StrokeSize = 9f;
+        canvas.DrawLine(left  + 4, top + 3, left  + 4, bottom + 3);
+        canvas.DrawLine(right + 4, top + 3, right + 4, bottom + 3);
+        canvas.DrawLine(left  + 3, top + 3, right + 3, top    + 3);
+
+        // ── Posts and crossbar (white, thick) ──
         canvas.StrokeColor = Colors.White;
-        canvas.StrokeSize = 5f;
-        // Left post
-        canvas.DrawLine(left, top, left, top + height);
-        // Right post
-        canvas.DrawLine(left + width, top, left + width, top + height);
-        // Crossbar
-        canvas.DrawLine(left, top, left + width, top);
-        // Goal line (bottom of frame)
-        canvas.DrawLine(left, top + height, left + width, top + height);
+        canvas.StrokeSize = 6f;
+        canvas.DrawLine(left,  top,    left,  bottom);
+        canvas.DrawLine(right, top,    right, bottom);
+        canvas.DrawLine(left,  top,    right, top);
+        canvas.DrawLine(left,  bottom, right, bottom);
+
+        // ── Inner highlight — simulates round tube cross-section ──
+        canvas.StrokeColor = Color.FromArgb("#AAFFFFFF");
+        canvas.StrokeSize = 1.5f;
+        canvas.DrawLine(left  + 2, top + 1, left  + 2, bottom);
+        canvas.DrawLine(right - 2, top + 1, right - 2, bottom);
+        canvas.DrawLine(left  + 1, top + 2, right - 1, top   + 2);
     }
 
     // ─── Goalkeeper ──────────────────────────────────────────────────────────
@@ -148,44 +205,54 @@ public class GameDrawable : IDrawable
         };
         float baseBodyH = GameState.CurrentDifficulty switch
         {
-            Difficulty.Easy   => 0.06f,
-            Difficulty.Medium => 0.075f,
-            Difficulty.Hard   => 0.10f,
-            _                 => 0.075f
+            Difficulty.Easy   => 0.10f,
+            Difficulty.Medium => 0.13f,
+            Difficulty.Hard   => 0.17f,
+            _                 => 0.13f
         };
 
-        // Crouch slightly during KeeperDive settle phase to show alertness
         bool isSettling = GameState.CurrentPhase == GamePhase.KeeperDive;
         float bodyW = r.Width  * (isSettling ? baseBodyW * 1.15f : baseBodyW);
         float bodyH = r.Height * (isSettling ? baseBodyH * 0.85f : baseBodyH);
 
-        // Jersey (yellow with black outline)
-        canvas.FillColor = Color.FromArgb("#FFD700");
-        canvas.FillRectangle(cx - bodyW / 2, cy - bodyH / 2, bodyW, bodyH);
-        canvas.StrokeColor = Colors.Black;
-        canvas.StrokeSize = 2f;
-        canvas.DrawRectangle(cx - bodyW / 2, cy - bodyH / 2, bodyW, bodyH);
+#if ANDROID || IOS
+        const float keeperMobileScale = 1.35f;
+        bodyW *= keeperMobileScale;
+        bodyH *= keeperMobileScale;
+#endif
 
-        // Head — scales slightly with body
-        float headR = r.Width * (0.014f + GameState.CurrentDifficulty switch
+        var sprite = isSettling ? GoalkeeperCrouchImage : GoalkeeperIdleImage;
+
+        if (sprite is not null)
         {
-            Difficulty.Easy   => 0.000f,
-            Difficulty.Medium => 0.004f,
-            Difficulty.Hard   => 0.008f,
-            _                 => 0.004f
-        });
-        canvas.FillColor = Color.FromArgb("#FFDAB9");
-        canvas.FillCircle(cx, cy - bodyH / 2 - headR, headR);
-        canvas.StrokeColor = Colors.Black;
-        canvas.StrokeSize = 1.5f;
-        canvas.DrawCircle(cx, cy - bodyH / 2 - headR, headR);
+            // Preserve sprite aspect ratio — derive height from width so it never squeezes on tall screens
+            float spriteBodyH = sprite.Width > 0
+                ? bodyW * ((float)sprite.Height / sprite.Width)
+                : bodyH;
+            canvas.DrawImage(sprite, cx - bodyW / 2, cy - spriteBodyH, bodyW, spriteBodyH);
+        }
+        else
+        {
+            canvas.FillColor = Color.FromArgb("#FFD700");
+            canvas.FillRectangle(cx - bodyW / 2, cy - bodyH / 2, bodyW, bodyH);
+            canvas.StrokeColor = Colors.Black;
+            canvas.StrokeSize = 2f;
+            canvas.DrawRectangle(cx - bodyW / 2, cy - bodyH / 2, bodyW, bodyH);
 
-        // Arms — tips drawn at exactly KeeperHalfWidth from center so visual matches hitbox
-        float hitboxPx = PhysicsEngine.GetKeeperHalfWidth(GameState.CurrentDifficulty) * r.Width;
-        canvas.StrokeColor = Color.FromArgb("#FFD700");
-        canvas.StrokeSize = isSettling ? 5f : 4f;
-        canvas.DrawLine(cx - bodyW / 2, cy, cx - hitboxPx, cy - bodyH * 0.25f);
-        canvas.DrawLine(cx + bodyW / 2, cy, cx + hitboxPx, cy - bodyH * 0.25f);
+            float headR = r.Width * (0.014f + GameState.CurrentDifficulty switch
+            {
+                Difficulty.Easy   => 0.000f,
+                Difficulty.Medium => 0.004f,
+                Difficulty.Hard   => 0.008f,
+                _                 => 0.004f
+            });
+            canvas.FillColor = Color.FromArgb("#FFDAB9");
+            canvas.FillCircle(cx, cy - bodyH / 2 - headR, headR);
+            canvas.StrokeColor = Colors.Black;
+            canvas.StrokeSize = 1.5f;
+            canvas.DrawCircle(cx, cy - bodyH / 2 - headR, headR);
+        }
+
     }
 
     // ─── Ball ────────────────────────────────────────────────────────────────
@@ -210,21 +277,28 @@ public class GameDrawable : IDrawable
         float by = Ball.Y * r.Height;
         float radius = baseRadius * Ball.Scale;
 
-        // White ball with black outline and a pentagon hint
-        canvas.FillColor = Colors.White;
-        canvas.FillCircle(bx, by, radius);
-        canvas.StrokeColor = Colors.Black;
-        canvas.StrokeSize = Math.Max(1f, radius * 0.12f);
-        canvas.DrawCircle(bx, by, radius);
-
-        // Simple pentagon patch — two black arcs for visual interest
-        if (radius > 4f)
+        if (BallImage is not null)
         {
-            canvas.StrokeColor = Color.FromArgb("#333333");
-            canvas.StrokeSize = Math.Max(1f, radius * 0.15f);
-            float patchR = radius * 0.45f;
-            canvas.DrawArc(bx - patchR, by - patchR, patchR * 2, patchR * 2, 40, 100, false, false);
-            canvas.DrawArc(bx - patchR * 0.4f, by + patchR * 0.1f, patchR * 2, patchR * 2, 180, 80, false, false);
+            // Draw SVG-derived sprite centered on the ball position
+            canvas.DrawImage(BallImage, bx - radius, by - radius, radius * 2, radius * 2);
+        }
+        else
+        {
+            // Fallback: programmatic white circle with pentagon patch
+            canvas.FillColor = Colors.White;
+            canvas.FillCircle(bx, by, radius);
+            canvas.StrokeColor = Colors.Black;
+            canvas.StrokeSize = Math.Max(1f, radius * 0.12f);
+            canvas.DrawCircle(bx, by, radius);
+
+            if (radius > 4f)
+            {
+                canvas.StrokeColor = Color.FromArgb("#333333");
+                canvas.StrokeSize = Math.Max(1f, radius * 0.15f);
+                float patchR = radius * 0.45f;
+                canvas.DrawArc(bx - patchR, by - patchR, patchR * 2, patchR * 2, 40, 100, false, false);
+                canvas.DrawArc(bx - patchR * 0.4f, by + patchR * 0.1f, patchR * 2, patchR * 2, 180, 80, false, false);
+            }
         }
     }
 
@@ -347,4 +421,5 @@ public class GameDrawable : IDrawable
     {
         // No drawing needed — difficulty selection is handled by XAML overlay
     }
+
 }

@@ -8,6 +8,7 @@
              BackgroundColor="Black">
 
     <Grid>
+
         <!-- Game canvas — fills entire screen -->
         <GraphicsView x:Name="GameCanvas"
                       InputTransparent="False"
@@ -18,55 +19,138 @@
             </GraphicsView.GestureRecognizers>
         </GraphicsView>
 
-        <!-- Score overlay — top of screen -->
+        <!-- ═══ HUD Bar — dedicated score / round info section ═══ -->
         <Grid VerticalOptions="Start"
               HorizontalOptions="Fill"
-              InputTransparent="True"
-              Padding="16,40,16,12"
-              ColumnDefinitions="*,Auto,*">
+              BackgroundColor="#E0000000"
+              ColumnDefinitions="*,Auto,*,Auto">
+
+            <Grid.Padding>
+                <OnPlatform x:TypeArguments="Thickness">
+                    <On Platform="iOS"     Value="16,48,8,12" />
+                    <On Platform="Android" Value="16,10,8,10" />
+                    <On Platform="Default" Value="16,10,8,10" />
+                </OnPlatform>
+            </Grid.Padding>
 
             <!-- Player score -->
-            <VerticalStackLayout Grid.Column="0" HorizontalOptions="Center">
+            <VerticalStackLayout Grid.Column="0" HorizontalOptions="Center" Spacing="0">
                 <Label Text="YOU"
-                       FontSize="12"
                        FontAttributes="Bold"
                        TextColor="#AAAAAA"
-                       HorizontalOptions="Center" />
+                       HorizontalOptions="Center">
+                    <Label.FontSize>
+                        <OnPlatform x:TypeArguments="x:Double">
+                            <On Platform="iOS,Android" Value="11" />
+                            <On Platform="Default"     Value="13" />
+                        </OnPlatform>
+                    </Label.FontSize>
+                </Label>
                 <Label Text="{Binding PlayerScore}"
-                       FontSize="42"
                        FontAttributes="Bold"
                        TextColor="White"
-                       HorizontalOptions="Center" />
+                       HorizontalOptions="Center">
+                    <Label.FontSize>
+                        <OnPlatform x:TypeArguments="x:Double">
+                            <On Platform="iOS,Android" Value="36" />
+                            <On Platform="Default"     Value="42" />
+                        </OnPlatform>
+                    </Label.FontSize>
+                </Label>
             </VerticalStackLayout>
 
             <!-- Round info — center -->
-            <VerticalStackLayout Grid.Column="1" HorizontalOptions="Center">
+            <VerticalStackLayout Grid.Column="1" HorizontalOptions="Center" Spacing="2">
                 <Label Text="{Binding RoundText}"
-                       FontSize="13"
                        FontAttributes="Bold"
                        TextColor="#FFD700"
-                       HorizontalOptions="Center" />
-                <Label Text="–"
-                       FontSize="36"
+                       HorizontalOptions="Center">
+                    <Label.FontSize>
+                        <OnPlatform x:TypeArguments="x:Double">
+                            <On Platform="iOS,Android" Value="12" />
+                            <On Platform="Default"     Value="14" />
+                        </OnPlatform>
+                    </Label.FontSize>
+                </Label>
+                <Label Text="VS"
                        FontAttributes="Bold"
-                       TextColor="#888888"
-                       HorizontalOptions="Center" />
+                       TextColor="#666666"
+                       HorizontalOptions="Center">
+                    <Label.FontSize>
+                        <OnPlatform x:TypeArguments="x:Double">
+                            <On Platform="iOS,Android" Value="20" />
+                            <On Platform="Default"     Value="26" />
+                        </OnPlatform>
+                    </Label.FontSize>
+                </Label>
             </VerticalStackLayout>
 
             <!-- Keeper score -->
-            <VerticalStackLayout Grid.Column="2" HorizontalOptions="Center">
+            <VerticalStackLayout Grid.Column="2" HorizontalOptions="Center" Spacing="0">
                 <Label Text="KEEPER"
-                       FontSize="12"
                        FontAttributes="Bold"
                        TextColor="#AAAAAA"
-                       HorizontalOptions="Center" />
+                       HorizontalOptions="Center">
+                    <Label.FontSize>
+                        <OnPlatform x:TypeArguments="x:Double">
+                            <On Platform="iOS,Android" Value="11" />
+                            <On Platform="Default"     Value="13" />
+                        </OnPlatform>
+                    </Label.FontSize>
+                </Label>
                 <Label Text="{Binding KeeperScore}"
-                       FontSize="42"
                        FontAttributes="Bold"
                        TextColor="White"
-                       HorizontalOptions="Center" />
+                       HorizontalOptions="Center">
+                    <Label.FontSize>
+                        <OnPlatform x:TypeArguments="x:Double">
+                            <On Platform="iOS,Android" Value="36" />
+                            <On Platform="Default"     Value="42" />
+                        </OnPlatform>
+                    </Label.FontSize>
+                </Label>
             </VerticalStackLayout>
+
+            <!-- Menu button — inside the HUD bar, far right -->
+            <Button Grid.Column="3"
+                    Text="✕"
+                    Clicked="OnMenuButtonClicked"
+                    WidthRequest="36"
+                    HeightRequest="36"
+                    CornerRadius="18"
+                    FontSize="14"
+                    FontAttributes="Bold"
+                    BackgroundColor="#55FFFFFF"
+                    TextColor="White"
+                    Padding="0"
+                    VerticalOptions="Center"
+                    HorizontalOptions="Center"
+                    Margin="8,0,4,0">
+                <Button.Triggers>
+                    <DataTrigger TargetType="Button"
+                                 Binding="{Binding ShowDifficultySelector}"
+                                 Value="True">
+                        <Setter Property="IsVisible" Value="False" />
+                    </DataTrigger>
+                </Button.Triggers>
+            </Button>
+
         </Grid>
+
+        <!-- Bottom separator line under HUD -->
+        <BoxView HeightRequest="1"
+                 Color="#33FFFFFF"
+                 VerticalOptions="Start"
+                 HorizontalOptions="Fill"
+                 InputTransparent="True">
+            <BoxView.Margin>
+                <OnPlatform x:TypeArguments="Thickness">
+                    <On Platform="iOS"     Value="0,100,0,0" />
+                    <On Platform="Android" Value="0,62,0,0"  />
+                    <On Platform="Default" Value="0,62,0,0"  />
+                </OnPlatform>
+            </BoxView.Margin>
+        </BoxView>
 
         <!-- Swipe hint — shown only during Aiming phase when difficulty is selected -->
         <Label Text="Swipe to aim and shoot"
@@ -114,10 +198,16 @@
                                  VerticalOptions="Center"
                                  Spacing="20">
                 <Label Text="⚽ PENALTY SHOOTOUT"
-                       FontSize="28"
                        FontAttributes="Bold"
                        TextColor="White"
-                       HorizontalOptions="Center" />
+                       HorizontalOptions="Center">
+                    <Label.FontSize>
+                        <OnPlatform x:TypeArguments="x:Double">
+                            <On Platform="iOS,Android" Value="24" />
+                            <On Platform="Default"     Value="28" />
+                        </OnPlatform>
+                    </Label.FontSize>
+                </Label>
                 <Label Text="Choose Difficulty"
                        FontSize="16"
                        TextColor="#AAAAAA"
@@ -172,5 +262,6 @@
                 HorizontalOptions="Center"
                 VerticalOptions="End"
                 Margin="0,0,0,80" />
+
     </Grid>
 </ContentPage>

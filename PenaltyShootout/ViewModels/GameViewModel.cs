@@ -155,6 +155,9 @@ public partial class GameViewModel : ObservableObject
                 break;
             case ShotResult.Save:
                 GameState.KeeperScore++;
+                // Snap ball to keeper's hands — slightly in front of him toward the player
+                Ball.X = Goalkeeper.X;
+                Ball.Y = Goalkeeper.Y + 0.03f;
                 break;
             // Miss: neither score changes
         }
@@ -223,8 +226,13 @@ public partial class GameViewModel : ObservableObject
         float normalizedY = Math.Clamp((float)(-totalY / AimSensitivity), -1f, 1f);
         float verticalT   = Math.Clamp((normalizedY + 1f) / 2f, 0f, 1f);
 
-        _rawAimX = 0.5f + normalizedX * 0.25f;
-        _rawAimY = GoalPost.Bottom - verticalT * GoalPost.Height;
+        _rawAimX = 0.5f + normalizedX * 0.40f;
+
+        // Expand vertical range so high/low shots feel meaningfully different.
+        // Aim top = 0.04 above crossbar, aim bottom = 0.06 below goal line.
+        float aimTop    = GoalPost.Top    - 0.04f;
+        float aimBottom = GoalPost.Bottom + 0.06f;
+        _rawAimY = aimBottom - verticalT * (aimBottom - aimTop);
 
         Drawable.AimX = _rawAimX;
         Drawable.AimY = _rawAimY;
@@ -249,8 +257,12 @@ public partial class GameViewModel : ObservableObject
             return;
         }
 
-        double magnitude = Math.Sqrt(totalX * totalX + totalY * totalY);
-        float power = Math.Clamp((float)(magnitude / AimSensitivity), PhysicsEngine.MinPower, PhysicsEngine.MaxPower);
+        // Power driven by aim height: high aim = fast shot, low aim = slow shot.
+        // aimT = 0 at the top of the aim range, 1 at the bottom.
+        float aimTop    = GoalPost.Top    - 0.04f;
+        float aimBottom = GoalPost.Bottom + 0.06f;
+        float aimT = Math.Clamp((_rawAimY - aimTop) / (aimBottom - aimTop), 0f, 1f);
+        float power = PhysicsEngine.MaxPower - aimT * (PhysicsEngine.MaxPower - PhysicsEngine.MinPower);
 
         Ball.VelocityX = (dx / dist) * power;
         Ball.VelocityY = (dy / dist) * power;
@@ -300,9 +312,12 @@ public partial class GameViewModel : ObservableObject
 
     // ─── Commands ────────────────────────────────────────────────────────────
 
-    /// <summary>Restarts the game from the beginning.</summary>
+    /// <summary>Restarts the game from the beginning and returns to the difficulty selector.</summary>
     [RelayCommand]
-    private void PlayAgain()
+    private void PlayAgain() => ReturnToMenu();
+
+    /// <summary>Resets all state and shows the difficulty selector. Called by PlayAgain and the menu button.</summary>
+    public void ReturnToMenu()
     {
         GameState.Reset();
         Ball.Reset();

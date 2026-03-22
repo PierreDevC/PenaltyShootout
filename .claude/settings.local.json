@@ -3,7 +3,9 @@
     "allow": [
       "Bash(python -c \":*)",
       "Bash(dotnet add:*)",
-      "Bash(dotnet build:*)"
+      "Bash(dotnet build:*)",
+      "Bash(find D:/repos/PenaltyShootout/PenaltyShootout/bin/Debug/net9.0-windows10.0.19041.0 -name ball*)",
+      "Bash(find D:/repos/PenaltyShootout/PenaltyShootout/obj -name ball*)"
     ]
   }
 }
