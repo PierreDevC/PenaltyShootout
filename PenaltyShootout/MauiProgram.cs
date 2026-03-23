@@ -23,7 +23,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<IAudioManager>(AudioManager.Current);
         builder.Services.AddSingleton<AudioService>();
 
-        // Game services
+        // Services du jeu
         builder.Services.AddSingleton<PhysicsEngine>();
 
         // MVVM

@@ -9,8 +9,8 @@ using PenaltyShootout.Services;
 namespace PenaltyShootout.ViewModels;
 
 /// <summary>
-/// Central orchestrator for all game logic. Owns models, drives physics updates,
-/// manages phase transitions, and exposes observable state for the View.
+/// Orchestrateur central de toute la logique de jeu. Possède les modèles, pilote les mises à jour physiques,
+/// gère les transitions de phase et expose l'état observable à la Vue.
 /// </summary>
 public partial class GameViewModel : ObservableObject
 {
@@ -19,33 +19,35 @@ public partial class GameViewModel : ObservableObject
     private readonly Stopwatch _phaseClock = new();
     private readonly Stopwatch _deltaClock = new();
 
-    // ─── Models ──────────────────────────────────────────────────────────────
+    // ─── Modèles ─────────────────────────────────────────────────────────────
 
     public Ball Ball { get; } = new();
     public Goalkeeper Goalkeeper { get; } = new();
     public GoalPost GoalPost { get; } = new();
     public GameState GameState { get; } = new();
 
-    // ─── Observable Properties ───────────────────────────────────────────────
+    // ─── Propriétés observables ───────────────────────────────────────────────
 
+#pragma warning disable MVVMTK0045
     [ObservableProperty] private int _playerScore;
     [ObservableProperty] private int _keeperScore;
-    [ObservableProperty] private string _roundText = "Round 1 / 5";
+    [ObservableProperty] private string _roundText = "Manche 1 / 5";
     [ObservableProperty] private GamePhase _currentPhase = GamePhase.Aiming;
     [ObservableProperty] private bool _showDifficultySelector = true;
     [ObservableProperty] private bool _showPlayAgain;
+#pragma warning restore MVVMTK0045
 
-    /// <summary>The drawable instance wired to the GraphicsView.</summary>
+    /// <summary>Instance du drawable connectée au GraphicsView.</summary>
     public GameDrawable Drawable { get; }
 
-    // Aim state
+    // État de la visée
     private float _rawAimX = 0.5f;
     private float _rawAimY = 0.15f;
     private float _canvasWidth  = 400f;
     private float _canvasHeight = 800f;
     private const float AimSensitivity = 300f;
 
-    // Ball final position captured before Y-clamp (for save detection)
+    // Position X finale du ballon capturée avant le blocage en Y (pour la détection d'arrêt)
     private float _ballFinalX;
 
     public GameViewModel(PhysicsEngine physics, AudioService audio)
@@ -62,18 +64,18 @@ public partial class GameViewModel : ObservableObject
         };
     }
 
-    // ─── Canvas Size ─────────────────────────────────────────────────────────
+    // ─── Taille du canvas ────────────────────────────────────────────────────
 
-    /// <summary>Called by the View to report canvas dimensions for aim normalization.</summary>
+    /// <summary>Appelé par la Vue pour communiquer les dimensions du canvas pour la normalisation de la visée.</summary>
     public void SetCanvasSize(double width, double height)
     {
         _canvasWidth  = (float)Math.Max(1, width);
         _canvasHeight = (float)Math.Max(1, height);
     }
 
-    // ─── Game Loop ───────────────────────────────────────────────────────────
+    // ─── Boucle de jeu ───────────────────────────────────────────────────────
 
-    /// <summary>Called every timer tick (≈16ms) to advance game simulation.</summary>
+    /// <summary>Appelé à chaque tick du timer (~16 ms) pour faire avancer la simulation.</summary>
     public void Update()
     {
         float deltaTime = _deltaClock.IsRunning
@@ -99,13 +101,13 @@ public partial class GameViewModel : ObservableObject
 
     private void UpdateShooting(float deltaTime)
     {
-        // Keeper paces continuously while ball is in flight
-        _physics.UpdateKeeperPacing(Goalkeeper, GameState.CurrentDifficulty, deltaTime);
+        // Le gardien continue de se déplacer pendant que le ballon est en vol
+        PhysicsEngine.UpdateKeeperPacing(Goalkeeper, GameState.CurrentDifficulty, deltaTime);
 
-        bool reachedGoal = _physics.UpdateBall(Ball, deltaTime);
+        bool reachedGoal = PhysicsEngine.UpdateBall(Ball, deltaTime);
         if (reachedGoal)
         {
-            // Capture final X before clamping Y
+            // Capturer la position X finale avant de bloquer Y sur la ligne de but
             _ballFinalX = Ball.X;
             Ball.Y = PhysicsEngine.GoalLineY;
             TransitionTo(GamePhase.KeeperDive);
@@ -114,8 +116,8 @@ public partial class GameViewModel : ObservableObject
 
     private void UpdateKeeperSettle(float deltaTime)
     {
-        // Keeper briefly continues pacing for visual naturalness, then freezes
-        _physics.UpdateKeeperPacing(Goalkeeper, GameState.CurrentDifficulty, deltaTime);
+        // Le gardien continue brièvement de se déplacer pour plus de naturel, puis se fige
+        PhysicsEngine.UpdateKeeperPacing(Goalkeeper, GameState.CurrentDifficulty, deltaTime);
 
         if (_phaseClock.Elapsed.TotalMilliseconds >= PhysicsEngine.KeeperSettleMs)
             TransitionTo(GamePhase.Result);
@@ -127,7 +129,7 @@ public partial class GameViewModel : ObservableObject
             AdvanceRound();
     }
 
-    // ─── Phase Transitions ───────────────────────────────────────────────────
+    // ─── Transitions de phase ─────────────────────────────────────────────────
 
     private void TransitionTo(GamePhase phase)
     {
@@ -145,7 +147,7 @@ public partial class GameViewModel : ObservableObject
 
     private void EvaluateResult()
     {
-        ShotResult result = _physics.EvaluateShot(_ballFinalX, Goalkeeper.X, GameState.CurrentDifficulty);
+        ShotResult result = PhysicsEngine.EvaluateShot(_ballFinalX, Goalkeeper.X, GameState.CurrentDifficulty);
         GameState.LastResult = result;
 
         switch (result)
@@ -155,11 +157,11 @@ public partial class GameViewModel : ObservableObject
                 break;
             case ShotResult.Save:
                 GameState.KeeperScore++;
-                // Snap ball to keeper's hands — slightly in front of him toward the player
+                // Placer le ballon dans les mains du gardien — légèrement devant lui vers le joueur
                 Ball.X = Goalkeeper.X;
                 Ball.Y = Goalkeeper.Y + 0.03f;
                 break;
-            // Miss: neither score changes
+            // Raté : aucun score ne change
         }
     }
 
@@ -213,9 +215,9 @@ public partial class GameViewModel : ObservableObject
         _phaseClock.Stop();
     }
 
-    // ─── Input Handling ──────────────────────────────────────────────────────
+    // ─── Gestion des entrées ──────────────────────────────────────────────────
 
-    /// <summary>Updates aim direction from pan gesture deltas.</summary>
+    /// <summary>Met à jour la direction de visée à partir des deltas du geste de glissement.</summary>
     public void UpdateAim(double totalX, double totalY, double canvasWidth, double canvasHeight)
     {
         if (GameState.CurrentPhase != GamePhase.Aiming) return;
@@ -228,8 +230,8 @@ public partial class GameViewModel : ObservableObject
 
         _rawAimX = 0.5f + normalizedX * 0.40f;
 
-        // Expand vertical range so high/low shots feel meaningfully different.
-        // Aim top = 0.04 above crossbar, aim bottom = 0.06 below goal line.
+        // Élargir la plage verticale pour que les tirs haut/bas soient clairement différents.
+        // Sommet de visée = 0.04 au-dessus de la barre, bas de visée = 0.06 sous la ligne de but.
         float aimTop    = GoalPost.Top    - 0.04f;
         float aimBottom = GoalPost.Bottom + 0.06f;
         _rawAimY = aimBottom - verticalT * (aimBottom - aimTop);
@@ -240,7 +242,7 @@ public partial class GameViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Fires the shot. A zero-length swipe (tap) is rejected to prevent a Shooting-phase freeze.
+    /// Tire le ballon. Un glissement de longueur nulle (simple tap) est ignoré pour éviter un blocage en phase Shooting.
     /// </summary>
     public void Shoot(double totalX, double totalY)
     {
@@ -257,8 +259,8 @@ public partial class GameViewModel : ObservableObject
             return;
         }
 
-        // Power driven by aim height: high aim = fast shot, low aim = slow shot.
-        // aimT = 0 at the top of the aim range, 1 at the bottom.
+        // Puissance déterminée par la hauteur de visée : tir haut = rapide, tir bas = lent.
+        // aimT = 0 en haut de la plage, 1 en bas.
         float aimTop    = GoalPost.Top    - 0.04f;
         float aimBottom = GoalPost.Bottom + 0.06f;
         float aimT = Math.Clamp((_rawAimY - aimTop) / (aimBottom - aimTop), 0f, 1f);
@@ -273,13 +275,13 @@ public partial class GameViewModel : ObservableObject
         _ = _audio.PlayKickAsync();
     }
 
-    /// <summary>Resets the aim indicator when the OS cancels a pan gesture. Does not fire a shot.</summary>
+    /// <summary>Réinitialise l'indicateur de visée quand l'OS annule un geste. Ne tire pas le ballon.</summary>
     public void CancelAim()
     {
         Drawable.ShowAimIndicator = false;
     }
 
-    // ─── Round / Game Reset ──────────────────────────────────────────────────
+    // ─── Réinitialisation des manches et du jeu ───────────────────────────────
 
     private void ResetRound()
     {
@@ -306,17 +308,17 @@ public partial class GameViewModel : ObservableObject
     private void UpdateRoundText()
     {
         RoundText = GameState.IsSuddenDeath
-            ? "Sudden Death"
-            : $"Round {Math.Min(GameState.CurrentRound, GameState.TotalRounds)} / {GameState.TotalRounds}";
+            ? "Mort Subite"
+            : $"Manche {Math.Min(GameState.CurrentRound, GameState.TotalRounds)} / {GameState.TotalRounds}";
     }
 
-    // ─── Commands ────────────────────────────────────────────────────────────
+    // ─── Commandes ───────────────────────────────────────────────────────────
 
-    /// <summary>Restarts the game from the beginning and returns to the difficulty selector.</summary>
+    /// <summary>Relance le jeu depuis le début et retourne au sélecteur de difficulté.</summary>
     [RelayCommand]
     private void PlayAgain() => ReturnToMenu();
 
-    /// <summary>Resets all state and shows the difficulty selector. Called by PlayAgain and the menu button.</summary>
+    /// <summary>Réinitialise tout l'état et affiche le sélecteur de difficulté. Appelé par PlayAgain et le bouton menu.</summary>
     public void ReturnToMenu()
     {
         GameState.Reset();
@@ -337,7 +339,7 @@ public partial class GameViewModel : ObservableObject
         _deltaClock.Restart();
     }
 
-    /// <summary>Sets the difficulty and starts the game.</summary>
+    /// <summary>Définit la difficulté et démarre la partie.</summary>
     [RelayCommand]
     private void SetDifficulty(string level)
     {
@@ -355,6 +357,6 @@ public partial class GameViewModel : ObservableObject
         _deltaClock.Restart();
     }
 
-    /// <summary>Called when the app resumes to restart the delta clock.</summary>
+    /// <summary>Appelé lors de la reprise de l'application pour redémarrer le chronomètre de delta.</summary>
     public void Resume() => _deltaClock.Restart();
 }

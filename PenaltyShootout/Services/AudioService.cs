@@ -3,29 +3,29 @@ using Plugin.Maui.Audio;
 namespace PenaltyShootout.Services;
 
 /// <summary>
-/// Cross-platform audio playback wrapper for game sound effects.
-/// Audio files must exist in Resources/Raw/ with MauiAsset build action.
+/// Wrapper de lecture audio multiplateforme pour les effets sonores du jeu.
+/// Les fichiers audio doivent être présents dans Resources/Raw/ avec l'action de build MauiAsset.
 /// </summary>
 public class AudioService(IAudioManager audioManager)
 {
     private IAudioPlayer? _crowdPlayer;
 
-    /// <summary>Plays the ball kick sound effect.</summary>
+    /// <summary>Joue l'effet sonore du coup de pied.</summary>
     public async Task PlayKickAsync() => await PlayAsync("kick.wav");
 
-    /// <summary>Plays the goal celebration sound.</summary>
+    /// <summary>Joue le son de célébration d'un but.</summary>
     public async Task PlayGoalAsync() => await PlayAsync("goal.wav");
 
-    /// <summary>Plays the save sound effect.</summary>
+    /// <summary>Joue l'effet sonore d'un arrêt.</summary>
     public async Task PlaySaveAsync() => await PlayAsync("save.wav");
 
-    /// <summary>Plays the miss sound effect.</summary>
+    /// <summary>Joue l'effet sonore d'un tir raté.</summary>
     public async Task PlayMissAsync() => await PlayAsync("miss.wav");
 
-    /// <summary>Plays the referee whistle.</summary>
+    /// <summary>Joue le coup de sifflet de l'arbitre.</summary>
     public async Task PlayWhistleAsync() => await PlayAsync("whistle.wav");
 
-    /// <summary>Starts the looping crowd ambient sound.</summary>
+    /// <summary>Démarre l'ambiance sonore en boucle de la foule.</summary>
     public async Task StartCrowdAmbienceAsync()
     {
         if (_crowdPlayer is not null) return;
@@ -37,10 +37,10 @@ public class AudioService(IAudioManager audioManager)
             _crowdPlayer.Volume = 0.4;
             _crowdPlayer.Play();
         }
-        catch { /* Audio file not yet available */ }
+        catch { /* Fichier audio non encore disponible */ }
     }
 
-    /// <summary>Stops the crowd ambient sound.</summary>
+    /// <summary>Arrête l'ambiance sonore de la foule.</summary>
     public void StopCrowdAmbience()
     {
         _crowdPlayer?.Stop();
@@ -49,8 +49,8 @@ public class AudioService(IAudioManager audioManager)
     }
 
     /// <summary>
-    /// Plays a one-shot sound effect, disposing the player when playback ends
-    /// to avoid exhausting native audio handles (CB-04).
+    /// Joue un effet sonore ponctuel et libère le lecteur dès la fin de la lecture
+    /// pour éviter d'épuiser les handles audio natifs (CB-04).
     /// </summary>
     private async Task PlayAsync(string fileName)
     {
@@ -58,10 +58,10 @@ public class AudioService(IAudioManager audioManager)
         {
             var stream = await FileSystem.OpenAppPackageFileAsync(fileName);
             var player = audioManager.CreatePlayer(stream);
-            // Dispose the native handle as soon as playback finishes
+            // Libère la ressource native dès la fin de la lecture
             player.PlaybackEnded += (_, _) => player.Dispose();
             player.Play();
         }
-        catch { /* Audio file not yet available */ }
+        catch { /* Fichier audio non encore disponible */ }
     }
 }

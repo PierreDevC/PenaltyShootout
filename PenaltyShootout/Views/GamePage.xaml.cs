@@ -4,7 +4,7 @@ using PenaltyShootout.ViewModels;
 namespace PenaltyShootout.Views;
 
 /// <summary>
-/// Game screen: hosts the GraphicsView canvas, gesture recognizer, and game loop timer.
+/// Écran de jeu : héberge le canvas GraphicsView, le gestionnaire de gestes et le timer de la boucle de jeu.
 /// </summary>
 public partial class GamePage : ContentPage
 {
@@ -23,7 +23,7 @@ public partial class GamePage : ContentPage
     {
         base.OnAppearing();
 
-        // CB-05: Stop any existing timer before creating a new one (guards against double OnAppearing)
+        // CB-05 : Arrêter tout timer existant avant d'en créer un nouveau (protège contre un double OnAppearing)
         _timer?.Stop();
         _timer = null;
 
@@ -34,7 +34,7 @@ public partial class GamePage : ContentPage
         _timer.Tick += OnTick;
         _timer.Start();
 
-        // Load sprites once — no-op on subsequent OnAppearing calls if already loaded
+        // Charge les sprites une seule fois — sans effet lors des appels suivants si déjà chargés
         if (_viewModel.Drawable.BallImage is null ||
             _viewModel.Drawable.GoalkeeperIdleImage is null ||
             _viewModel.Drawable.GoalkeeperCrouchImage is null)
@@ -55,10 +55,10 @@ public partial class GamePage : ContentPage
     }
 
     /// <summary>
-    /// Loads a MauiImage sprite by its base name (no extension) on all platforms.
-    /// Windows:  name.scale-100.png beside the exe
-    /// Android:  drawable resource via Android resource system
-    /// iOS/macOS: name.png via FileSystem package API
+    /// Charge un sprite MauiImage par son nom de base (sans extension) sur toutes les plateformes.
+    /// Windows  : name.scale-100.png dans le dossier de l'exe
+    /// Android  : ressource drawable via le système de ressources Android
+    /// iOS/macOS : name.png via l'API de package FileSystem
     /// </summary>
     private static async Task LoadSpriteAsync(string baseName, Action<Microsoft.Maui.Graphics.IImage> assign)
     {
@@ -97,7 +97,7 @@ public partial class GamePage : ContentPage
             catch { }
         });
 #else
-        // iOS / macOS: resizetizer places assets as name.png in the app bundle
+        // iOS / macOS : resizetizer place les assets en tant que name.png dans le bundle de l'app
         foreach (var candidate in new[] { $"{baseName}.png", $"{baseName}@2x.png" })
         {
             try
@@ -133,10 +133,10 @@ public partial class GamePage : ContentPage
     private async void OnMenuButtonClicked(object? sender, EventArgs e)
     {
         bool confirmed = await DisplayAlert(
-            "End Match",
-            "Return to the main menu? Your current match will be lost.",
-            "Yes, quit",
-            "Cancel");
+            "Quitter le match",
+            "Retourner au menu principal ? La partie en cours sera perdue.",
+            "Oui, quitter",
+            "Annuler");
 
         if (confirmed)
             _viewModel.ReturnToMenu();
@@ -151,13 +151,13 @@ public partial class GamePage : ContentPage
                 break;
 
             case GestureStatus.Completed:
-                // CB-01: Only fire shot on Completed — Canceled means OS interrupted the gesture (phone call,
-                // competing scroll, etc.) and the player did not intend to shoot.
+                // CB-01 : Tirer uniquement sur Completed — Canceled signifie que l'OS a interrompu le geste
+                // (appel téléphonique, défilement concurrent, etc.) et que le joueur n'avait pas l'intention de tirer.
                 _viewModel.Shoot(e.TotalX, e.TotalY);
                 break;
 
             case GestureStatus.Canceled:
-                // Reset the aim indicator without shooting
+                // Réinitialiser l'indicateur de visée sans tirer
                 _viewModel.CancelAim();
                 break;
         }

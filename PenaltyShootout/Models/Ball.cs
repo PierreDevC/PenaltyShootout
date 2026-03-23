@@ -1,30 +1,30 @@
 namespace PenaltyShootout.Models;
 
-/// <summary>Represents the football, with normalized coordinates (0–1).</summary>
+/// <summary>Représente le ballon de football, en coordonnées normalisées (0–1).</summary>
 public class Ball
 {
-    /// <summary>Normalized horizontal position (0 = left, 1 = right).</summary>
+    /// <summary>Position horizontale normalisée (0 = gauche, 1 = droite).</summary>
     public float X { get; set; } = 0.5f;
 
-    /// <summary>Normalized vertical position (0 = top, 1 = bottom).</summary>
+    /// <summary>Position verticale normalisée (0 = haut, 1 = bas).</summary>
     public float Y { get; set; } = 1.0f;
 
-    /// <summary>Horizontal velocity in normalized units per second.</summary>
+    /// <summary>Vitesse horizontale en unités normalisées par seconde.</summary>
     public float VelocityX { get; set; }
 
-    /// <summary>Vertical velocity in normalized units per second.</summary>
+    /// <summary>Vitesse verticale en unités normalisées par seconde.</summary>
     public float VelocityY { get; set; }
 
-    /// <summary>Visual scale factor (1.0 = full size, 0.5 = minimum/far away).</summary>
+    /// <summary>Facteur d'échelle visuel (1.0 = taille réelle, 0.5 = minimum / loin).</summary>
     public float Scale { get; set; } = 1.0f;
 
-    /// <summary>Whether the ball is visible on screen.</summary>
+    /// <summary>Indique si le ballon est visible à l'écran.</summary>
     public bool IsVisible { get; set; } = true;
 
-    /// <summary>Total distance the ball has traveled (used for scale decay).</summary>
+    /// <summary>Distance totale parcourue par le ballon (utilisée pour la décroissance d'échelle).</summary>
     public float DistanceTraveled { get; set; }
 
-    /// <summary>Resets the ball to its starting position at bottom-center.</summary>
+    /// <summary>Remet le ballon à sa position initiale en bas au centre.</summary>
     public void Reset()
     {
         X = 0.5f;

@@ -4,28 +4,28 @@ using PenaltyShootout.Models;
 namespace PenaltyShootout.Drawables;
 
 /// <summary>
-/// Renders the entire game scene each frame. Reads from models — contains no business logic.
-/// All normalized coordinates (0–1) are multiplied by canvas dimensions inside Draw().
+/// Dessine toute la scène de jeu à chaque frame. Lit uniquement les modèles — ne contient aucune logique métier.
+/// Toutes les coordonnées normalisées (0–1) sont multipliées par les dimensions du canvas dans Draw().
 /// </summary>
 public class GameDrawable : IDrawable
 {
-    // Models — set by GameViewModel before first draw
+    // Modèles — définis par GameViewModel avant le premier rendu
     public Ball? Ball { get; set; }
     public Goalkeeper? Goalkeeper { get; set; }
     public GoalPost? GoalPost { get; set; }
     public GameState? GameState { get; set; }
 
-    // Sprites — loaded async by GamePage; each falls back to programmatic drawing if null
+    // Sprites — chargés de manière asynchrone par GamePage ; retour au dessin programmatique si null
     public Microsoft.Maui.Graphics.IImage? BallImage { get; set; }
     public Microsoft.Maui.Graphics.IImage? GoalkeeperIdleImage { get; set; }
     public Microsoft.Maui.Graphics.IImage? GoalkeeperCrouchImage { get; set; }
 
-    // Aim indicator state — set by GameViewModel during Aiming phase
+    // État de l'indicateur de visée — défini par GameViewModel pendant la phase Aiming
     public float AimX { get; set; } = 0.5f;
     public float AimY { get; set; } = 0.5f;
     public bool ShowAimIndicator { get; set; }
 
-    // Ball trail for polish (last N positions during flight)
+    // Traînée du ballon pour l'effet visuel (N dernières positions pendant le vol)
     private readonly record struct TrailPoint(float X, float Y, float Scale);
     private readonly Queue<TrailPoint> _trail = new();
     private const int TrailLength = 6;
@@ -46,11 +46,11 @@ public class GameDrawable : IDrawable
         DrawDifficultyOverlay(canvas, dirtyRect);
     }
 
-    // ─── Field ───────────────────────────────────────────────────────────────
+    // ─── Terrain ─────────────────────────────────────────────────────────────
 
     private static void DrawField(ICanvas canvas, RectF r)
     {
-        // Dark green gradient background
+        // Fond dégradé vert foncé
         var paint = new LinearGradientPaint
         {
             StartColor = Color.FromArgb("#1a6b1a"),
@@ -62,26 +62,26 @@ public class GameDrawable : IDrawable
         canvas.SetFillPaint(paint, r);
         canvas.FillRectangle(r);
 
-        // Penalty arc — anchored from the bottom so it stays visible on tall screens
+        // Arc de réparation — ancré depuis le bas pour rester visible sur les écrans allongés
         canvas.StrokeColor = Colors.White;
         canvas.StrokeSize = 2f;
         canvas.Alpha = 0.4f;
         float cx = r.Width * 0.5f;
         float arcRadius = r.Width * 0.28f;
-        float spotY = r.Height - r.Width * 0.20f;  // fixed distance from bottom, scales with width not height
+        float spotY = r.Height - r.Width * 0.20f; // distance fixe depuis le bas, proportionnelle à la largeur
         canvas.DrawArc(cx - arcRadius, spotY - arcRadius, arcRadius * 2, arcRadius * 2, 0, 180, false, false);
 
-        // Penalty spot
+        // Point de penalty
         canvas.FillColor = Colors.White;
         canvas.FillCircle(cx, spotY, 4f);
 
-        // Penalty box lines
+        // Lignes de la surface de réparation
         float boxLeft  = r.Width * 0.18f;
         float boxRight = r.Width * 0.82f;
         float boxTop   = r.Height * 0.60f;
         canvas.DrawRectangle(boxLeft, boxTop, boxRight - boxLeft, r.Height - boxTop);
 
-        // Goal area (smaller box)
+        // Surface de but (petit rectangle)
         float gaLeft  = r.Width * 0.33f;
         float gaRight = r.Width * 0.67f;
         float gaTop   = r.Height * 0.70f;
@@ -90,7 +90,7 @@ public class GameDrawable : IDrawable
         canvas.Alpha = 1f;
     }
 
-    // ─── Goal ────────────────────────────────────────────────────────────────
+    // ─── But ─────────────────────────────────────────────────────────────────
 
     private void DrawGoal(ICanvas canvas, RectF r)
     {
@@ -102,7 +102,7 @@ public class GameDrawable : IDrawable
         float height = GoalPost.Height * r.Height;
 
 #if ANDROID || IOS
-        // Scale the goal up on mobile — expand symmetrically from centre
+        // Agrandir le but sur mobile — expansion symétrique depuis le centre
         const float goalMobileScale = 1.35f;
         float extraW = width  * (goalMobileScale - 1f) / 2f;
         float extraH = height * (goalMobileScale - 1f) / 2f;
@@ -115,11 +115,11 @@ public class GameDrawable : IDrawable
         float right  = left + width;
         float bottom = top + height;
 
-        // ── Depth shadow — gives the goal a recessed, 3D look ──
+        // ── Ombre de profondeur — donne un effet 3D en creux ──
         canvas.FillColor = Color.FromArgb("#50000000");
         canvas.FillRectangle(left + 5, top + 4, width, height);
 
-        // ── Net background — gradient from dark (back) to lighter (front) ──
+        // ── Fond du filet — dégradé du foncé (fond) au clair (avant) ──
         var netPaint = new LinearGradientPaint
         {
             StartColor = Color.FromArgb("#28ffffff"),
@@ -130,28 +130,28 @@ public class GameDrawable : IDrawable
         canvas.SetFillPaint(netPaint, new RectF(left, top, width, height));
         canvas.FillRectangle(left, top, width, height);
 
-        // ── Net mesh — clipped to goal frame ──
+        // ── Maillage du filet — découpé au cadre du but ──
         canvas.SaveState();
         canvas.ClipRectangle(left, top, width, height);
 
-        // Vertical strings
+        // Cordes verticales
         canvas.StrokeColor = Color.FromArgb("#75ffffff");
         canvas.StrokeSize = 0.8f;
         float colSpacing = width / 16f;
         for (float x = left; x <= right + 0.5f; x += colSpacing)
             canvas.DrawLine(x, top, x, bottom);
 
-        // Horizontal strings with subtle perspective convergence toward the top
+        // Cordes horizontales avec légère convergence en perspective vers le haut
         const int rowCount = 6;
         for (int row = 0; row <= rowCount; row++)
         {
             float t = (float)row / rowCount;
             float y = top + t * height;
-            float inset = (1f - t) * width * 0.03f; // lines converge slightly at top
+            float inset = (1f - t) * width * 0.03f; // légère convergence au sommet
             canvas.DrawLine(left + inset, y, right - inset, y);
         }
 
-        // Diagonal strings — cross both ways to create a diamond mesh
+        // Cordes diagonales — croisées dans les deux sens pour créer un maillage en losange
         canvas.StrokeColor = Color.FromArgb("#40ffffff");
         canvas.StrokeSize = 0.6f;
         float diagStep = colSpacing * 1.6f;
@@ -163,14 +163,14 @@ public class GameDrawable : IDrawable
 
         canvas.RestoreState();
 
-        // ── Post shadows ──
+        // ── Ombres des poteaux ──
         canvas.StrokeColor = Color.FromArgb("#55000000");
         canvas.StrokeSize = 9f;
         canvas.DrawLine(left  + 4, top + 3, left  + 4, bottom + 3);
         canvas.DrawLine(right + 4, top + 3, right + 4, bottom + 3);
         canvas.DrawLine(left  + 3, top + 3, right + 3, top    + 3);
 
-        // ── Posts and crossbar (white, thick) ──
+        // ── Poteaux et barre transversale (blancs, épais) ──
         canvas.StrokeColor = Colors.White;
         canvas.StrokeSize = 6f;
         canvas.DrawLine(left,  top,    left,  bottom);
@@ -178,7 +178,7 @@ public class GameDrawable : IDrawable
         canvas.DrawLine(left,  top,    right, top);
         canvas.DrawLine(left,  bottom, right, bottom);
 
-        // ── Inner highlight — simulates round tube cross-section ──
+        // ── Reflet intérieur — simule une section de tube ronde ──
         canvas.StrokeColor = Color.FromArgb("#AAFFFFFF");
         canvas.StrokeSize = 1.5f;
         canvas.DrawLine(left  + 2, top + 1, left  + 2, bottom);
@@ -186,7 +186,7 @@ public class GameDrawable : IDrawable
         canvas.DrawLine(left  + 1, top + 2, right - 1, top   + 2);
     }
 
-    // ─── Goalkeeper ──────────────────────────────────────────────────────────
+    // ─── Gardien de but ──────────────────────────────────────────────────────
 
     private void DrawGoalkeeper(ICanvas canvas, RectF r)
     {
@@ -195,7 +195,7 @@ public class GameDrawable : IDrawable
         float cx = Goalkeeper.X * r.Width;
         float cy = Goalkeeper.Y * r.Height;
 
-        // Body size scales with difficulty — harder keeper is physically larger
+        // Taille du corps proportionnelle à la difficulté — gardien plus grand = plus difficile
         float baseBodyW = GameState.CurrentDifficulty switch
         {
             Difficulty.Easy   => 0.05f,
@@ -216,6 +216,7 @@ public class GameDrawable : IDrawable
         float bodyH = r.Height * (isSettling ? baseBodyH * 0.85f : baseBodyH);
 
 #if ANDROID || IOS
+        // Agrandir le gardien sur mobile
         const float keeperMobileScale = 1.35f;
         bodyW *= keeperMobileScale;
         bodyH *= keeperMobileScale;
@@ -225,7 +226,7 @@ public class GameDrawable : IDrawable
 
         if (sprite is not null)
         {
-            // Preserve sprite aspect ratio — derive height from width so it never squeezes on tall screens
+            // Conserver le ratio du sprite — hauteur dérivée de la largeur pour éviter l'écrasement sur écrans allongés
             float spriteBodyH = sprite.Width > 0
                 ? bodyW * ((float)sprite.Height / sprite.Width)
                 : bodyH;
@@ -233,6 +234,7 @@ public class GameDrawable : IDrawable
         }
         else
         {
+            // Dessin de secours : rectangle jaune
             canvas.FillColor = Color.FromArgb("#FFD700");
             canvas.FillRectangle(cx - bodyW / 2, cy - bodyH / 2, bodyW, bodyH);
             canvas.StrokeColor = Colors.Black;
@@ -252,16 +254,15 @@ public class GameDrawable : IDrawable
             canvas.StrokeSize = 1.5f;
             canvas.DrawCircle(cx, cy - bodyH / 2 - headR, headR);
         }
-
     }
 
-    // ─── Ball ────────────────────────────────────────────────────────────────
+    // ─── Ballon ──────────────────────────────────────────────────────────────
 
     private void DrawBall(ICanvas canvas, RectF r)
     {
         if (Ball is null || !Ball.IsVisible) return;
 
-        // Record trail during flight
+        // Enregistrer la traînée pendant le vol
         if (GameState?.CurrentPhase == GamePhase.Shooting)
         {
             _trail.Enqueue(new TrailPoint(Ball.X, Ball.Y, Ball.Scale));
@@ -279,12 +280,12 @@ public class GameDrawable : IDrawable
 
         if (BallImage is not null)
         {
-            // Draw SVG-derived sprite centered on the ball position
+            // Dessiner le sprite centré sur la position du ballon
             canvas.DrawImage(BallImage, bx - radius, by - radius, radius * 2, radius * 2);
         }
         else
         {
-            // Fallback: programmatic white circle with pentagon patch
+            // Dessin de secours : cercle blanc avec patch en pentagone
             canvas.FillColor = Colors.White;
             canvas.FillCircle(bx, by, radius);
             canvas.StrokeColor = Colors.Black;
@@ -318,7 +319,7 @@ public class GameDrawable : IDrawable
         }
     }
 
-    // ─── Aim Indicator ───────────────────────────────────────────────────────
+    // ─── Indicateur de visée ─────────────────────────────────────────────────
 
     private void DrawAimIndicator(ICanvas canvas, RectF r)
     {
@@ -337,13 +338,13 @@ public class GameDrawable : IDrawable
         canvas.StrokeDashPattern = null;
         canvas.Alpha = 1f;
 
-        // Aim point circle
+        // Cercle du point de visée
         canvas.StrokeColor = Color.FromArgb("#FFD700");
         canvas.StrokeSize = 2f;
         canvas.DrawCircle(endX, endY, 8f);
     }
 
-    // ─── Result Text ─────────────────────────────────────────────────────────
+    // ─── Texte de résultat ───────────────────────────────────────────────────
 
     private void DrawResultText(ICanvas canvas, RectF r)
     {
@@ -351,9 +352,9 @@ public class GameDrawable : IDrawable
 
         string text = GameState.LastResult switch
         {
-            ShotResult.Goal => "GOAL!",
-            ShotResult.Save => "SAVED!",
-            ShotResult.Miss => "MISS!",
+            ShotResult.Goal => "BUT !",
+            ShotResult.Save => "ARRÊTÉ !",
+            ShotResult.Miss => "RATÉ !",
             _               => string.Empty
         };
         if (string.IsNullOrEmpty(text)) return;
@@ -369,33 +370,33 @@ public class GameDrawable : IDrawable
         float cy = r.Height / 2f;
         float fontSize = r.Width * 0.13f;
 
-        // Shadow
+        // Ombre du texte
         canvas.FontColor = Colors.Black;
         canvas.FontSize = fontSize;
         canvas.Font = Microsoft.Maui.Graphics.Font.DefaultBold;
         canvas.DrawString(text, cx + 3, cy + 3, HorizontalAlignment.Center);
 
-        // Main text
+        // Texte principal
         canvas.FontColor = color;
         canvas.DrawString(text, cx, cy, HorizontalAlignment.Center);
     }
 
-    // ─── Game Over ───────────────────────────────────────────────────────────
+    // ─── Écran de fin de partie ───────────────────────────────────────────────
 
     private void DrawGameOver(ICanvas canvas, RectF r)
     {
         if (GameState?.CurrentPhase != GamePhase.GameOver) return;
 
-        // Semi-transparent overlay
+        // Fond semi-transparent
         canvas.FillColor = Color.FromArgb("#CC000000");
         canvas.FillRectangle(r);
 
         float cx = r.Width / 2f;
         float cy = r.Height / 2f;
 
-        string outcome = GameState.PlayerScore > GameState.KeeperScore ? "YOU WIN!"
-                       : GameState.PlayerScore < GameState.KeeperScore ? "YOU LOSE!"
-                       : "DRAW!";
+        string outcome = GameState.PlayerScore > GameState.KeeperScore ? "VICTOIRE !"
+                       : GameState.PlayerScore < GameState.KeeperScore ? "DÉFAITE !"
+                       : "ÉGALITÉ !";
         Color outcomeColor = GameState.PlayerScore > GameState.KeeperScore
             ? Color.FromArgb("#FFD700") : Colors.White;
 
@@ -412,14 +413,14 @@ public class GameDrawable : IDrawable
 
         canvas.FontSize = r.Width * 0.05f;
         canvas.FontColor = Color.FromArgb("#AAAAAA");
-        canvas.DrawString("Tap 'Play Again' to restart", cx, cy + r.Height * 0.1f, HorizontalAlignment.Center);
+        canvas.DrawString("Appuyez sur 'Rejouer' pour recommencer", cx, cy + r.Height * 0.1f, HorizontalAlignment.Center);
     }
 
-    // ─── Difficulty Overlay (drawn behind XAML buttons) ──────────────────────
+    // ─── Overlay de sélection de difficulté (dessiné derrière les boutons XAML) ──
 
-    private void DrawDifficultyOverlay(ICanvas canvas, RectF r)
+    private static void DrawDifficultyOverlay(ICanvas canvas, RectF r)
     {
-        // No drawing needed — difficulty selection is handled by XAML overlay
+        // Rien à dessiner — la sélection de difficulté est gérée par l'overlay XAML
+        _ = canvas; _ = r;
     }
-
 }

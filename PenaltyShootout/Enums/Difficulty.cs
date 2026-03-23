@@ -1,6 +1,6 @@
 namespace PenaltyShootout.Enums;
 
-/// <summary>AI goalkeeper difficulty level.</summary>
+/// <summary>Niveau de difficulté du gardien IA.</summary>
 public enum Difficulty
 {
     Easy,

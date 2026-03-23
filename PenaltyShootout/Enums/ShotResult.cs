@@ -1,6 +1,6 @@
 namespace PenaltyShootout.Enums;
 
-/// <summary>Outcome of a penalty kick attempt.</summary>
+/// <summary>Résultat d'une tentative de tir au but.</summary>
 public enum ShotResult
 {
     None,

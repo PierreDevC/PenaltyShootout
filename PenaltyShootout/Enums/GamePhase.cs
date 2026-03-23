@@ -1,6 +1,6 @@
 namespace PenaltyShootout.Enums;
 
-/// <summary>The current phase of the game state machine.</summary>
+/// <summary>Phase courante de la machine à états du jeu.</summary>
 public enum GamePhase
 {
     Aiming,
